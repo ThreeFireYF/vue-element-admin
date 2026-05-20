@@ -5,6 +5,18 @@ const path = require('path')
 const Mock = require('mockjs')
 
 const mockDir = path.join(process.cwd(), 'mock')
+const usePollingWatchers = (() => {
+  if (process.platform !== 'darwin') {
+    return false
+  }
+
+  try {
+    const fsevents = require('fsevents')
+    return typeof fsevents.watch !== 'function'
+  } catch (error) {
+    return true
+  }
+})()
 
 function registerRoutes(app) {
   let mockLastIndex
@@ -58,7 +70,9 @@ module.exports = app => {
   // watch files, hot reload mock server
   chokidar.watch(mockDir, {
     ignored: /mock-server/,
-    ignoreInitial: true
+    ignoreInitial: true,
+    usePolling: usePollingWatchers,
+    interval: usePollingWatchers ? 1000 : undefined
   }).on('all', (event, path) => {
     if (event === 'change' || event === 'add') {
       try {

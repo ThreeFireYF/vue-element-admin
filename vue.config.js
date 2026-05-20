@@ -1,12 +1,27 @@
 'use strict'
+
 const path = require('path')
 const defaultSettings = require('./src/settings.js')
+
+function shouldUsePollingWatchers() {
+  if (process.platform !== 'darwin') {
+    return false
+  }
+
+  try {
+    const fsevents = require('fsevents')
+    return typeof fsevents.watch !== 'function'
+  } catch (error) {
+    return true
+  }
+}
 
 function resolve(dir) {
   return path.join(__dirname, dir)
 }
 
 const name = defaultSettings.title || 'vue Element Admin' // page title
+const usePollingWatchers = shouldUsePollingWatchers()
 
 // If your port is set to 80,
 // use administrator privileges to execute the command line.
@@ -42,6 +57,10 @@ module.exports = {
     // provide the app's title in webpack's name field, so that
     // it can be accessed in index.html to inject the correct title.
     name: name,
+    watchOptions: usePollingWatchers ? {
+      poll: 1000,
+      ignored: /node_modules/
+    } : undefined,
     resolve: {
       alias: {
         '@': resolve('src')
