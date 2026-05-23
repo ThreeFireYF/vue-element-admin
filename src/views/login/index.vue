@@ -13,7 +13,7 @@
         <el-input
           ref="username"
           v-model="loginForm.username"
-          placeholder="Username"
+          placeholder="请输入账号"
           name="username"
           type="text"
           tabindex="1"
@@ -21,7 +21,7 @@
         />
       </el-form-item>
 
-      <el-tooltip v-model="capsTooltip" content="Caps lock is On" placement="right" manual>
+      <el-tooltip v-model="capsTooltip" content="大写锁定已开启" placement="right" manual>
         <el-form-item prop="password">
           <span class="svg-container">
             <svg-icon icon-class="password" />
@@ -31,7 +31,7 @@
             ref="password"
             v-model="loginForm.password"
             :type="passwordType"
-            placeholder="Password"
+            placeholder="请输入密码"
             name="password"
             tabindex="2"
             autocomplete="on"
@@ -69,20 +69,26 @@
 <script>
 import SocialSign from './components/SocialSignin'
 
+const DISABLED_DEMO_ACCOUNTS = ['admin', 'editor']
+
 export default {
   name: 'Login',
   components: { SocialSign },
   data() {
     const validateUsername = (rule, value, callback) => {
-      if (!value || !value.trim()) {
-        callback(new Error('Please enter the account'))
+      const normalizedValue = typeof value === 'string' ? value.trim().toLowerCase() : ''
+
+      if (!normalizedValue) {
+        callback(new Error('请输入账号'))
+      } else if (DISABLED_DEMO_ACCOUNTS.includes(normalizedValue)) {
+        callback(new Error('演示账号已禁用'))
       } else {
         callback()
       }
     }
     const validatePassword = (rule, value, callback) => {
       if (typeof value !== 'string') {
-        callback(new Error('Please enter the password'))
+        callback(new Error('请输入密码'))
       } else {
         callback()
       }
