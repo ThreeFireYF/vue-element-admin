@@ -20,24 +20,19 @@
 
       <el-dropdown class="avatar-container right-menu-item hover-effect" trigger="click">
         <div class="avatar-wrapper">
-          <img :src="avatar+'?imageView2/1/w/80/h/80'" class="user-avatar">
+          <img v-if="avatar" :src="avatar" class="user-avatar">
+          <div v-else class="user-avatar avatar-fallback">{{ avatarText }}</div>
           <i class="el-icon-caret-bottom" />
         </div>
         <el-dropdown-menu slot="dropdown">
           <router-link to="/profile/index">
-            <el-dropdown-item>Profile</el-dropdown-item>
+            <el-dropdown-item>个人资料</el-dropdown-item>
           </router-link>
           <router-link to="/">
-            <el-dropdown-item>Dashboard</el-dropdown-item>
+            <el-dropdown-item>经营看板</el-dropdown-item>
           </router-link>
-          <a target="_blank" href="https://github.com/PanJiaChen/vue-element-admin/">
-            <el-dropdown-item>Github</el-dropdown-item>
-          </a>
-          <a target="_blank" href="https://panjiachen.github.io/vue-element-admin-site/#/">
-            <el-dropdown-item>Docs</el-dropdown-item>
-          </a>
           <el-dropdown-item divided @click.native="logout">
-            <span style="display:block;">Log Out</span>
+            <span style="display:block;">退出登录</span>
           </el-dropdown-item>
         </el-dropdown-menu>
       </el-dropdown>
@@ -67,8 +62,12 @@ export default {
     ...mapGetters([
       'sidebar',
       'avatar',
+      'name',
       'device'
-    ])
+    ]),
+    avatarText() {
+      return (this.name || '?').trim().slice(0, 1).toUpperCase() || '?'
+    }
   },
   methods: {
     toggleSideBar() {
@@ -151,6 +150,16 @@ export default {
           width: 40px;
           height: 40px;
           border-radius: 10px;
+        }
+
+        .avatar-fallback {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #409eff;
+          color: #fff;
+          font-size: 16px;
+          font-weight: 600;
         }
 
         .el-icon-caret-bottom {

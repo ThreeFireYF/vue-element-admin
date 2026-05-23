@@ -1,24 +1,28 @@
 import request from '@/utils/request'
 
+const authBaseURL = process.env.VUE_APP_AUTH_BASE_API || process.env.VUE_APP_BASE_API
+
 export function login(data) {
   return request({
-    url: '/vue-element-admin/user/login',
+    baseURL: authBaseURL,
+    url: '/auth/login',
     method: 'post',
-    data
+    skipLegacyToken: true,
+    data: {
+      code: data.username.trim()
+    }
   })
 }
 
-export function getInfo(token) {
+export function getInfo() {
   return request({
-    url: '/vue-element-admin/user/info',
-    method: 'get',
-    params: { token }
+    baseURL: authBaseURL,
+    url: '/auth/me',
+    skipLegacyToken: true,
+    method: 'get'
   })
 }
 
 export function logout() {
-  return request({
-    url: '/vue-element-admin/user/logout',
-    method: 'post'
-  })
+  return Promise.resolve({ code: 0 })
 }

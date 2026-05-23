@@ -6,11 +6,9 @@ Vue.use(Router)
 /* Layout */
 import Layout from '@/layout'
 
-/* Router Modules */
-import componentsRouter from './modules/components'
-import chartsRouter from './modules/charts'
-import tableRouter from './modules/table'
-import nestedRouter from './modules/nested'
+const RouteView = {
+  render: h => h('router-view')
+}
 
 /**
  * Note: sub-menu only appear when route children.length >= 1
@@ -23,7 +21,7 @@ import nestedRouter from './modules/nested'
  * redirect: noRedirect           if set noRedirect will no redirect in the breadcrumb
  * name:'router-name'             the name is used by <keep-alive> (must set!!!)
  * meta : {
-    roles: ['admin','editor']    control the page roles (you can set multiple roles)
+    roles: ['dhx-admin']         control the page roles (you can set multiple roles)
     title: 'title'               the name show in sidebar and breadcrumb (recommend set)
     icon: 'svg-name'/'el-icon-x' the icon show in the sidebar
     noCache: true                if set true, the page will no be cached(default is false)
@@ -79,32 +77,7 @@ export const constantRoutes = [
         path: 'dashboard',
         component: () => import('@/views/dashboard/index'),
         name: 'Dashboard',
-        meta: { title: 'Dashboard', icon: 'dashboard', affix: true }
-      }
-    ]
-  },
-  {
-    path: '/documentation',
-    component: Layout,
-    children: [
-      {
-        path: 'index',
-        component: () => import('@/views/documentation/index'),
-        name: 'Documentation',
-        meta: { title: 'Documentation', icon: 'documentation', affix: true }
-      }
-    ]
-  },
-  {
-    path: '/guide',
-    component: Layout,
-    redirect: '/guide/index',
-    children: [
-      {
-        path: 'index',
-        component: () => import('@/views/guide/index'),
-        name: 'Guide',
-        meta: { title: 'Guide', icon: 'guide', noCache: true }
+        meta: { title: '经营看板', icon: 'dashboard', affix: true }
       }
     ]
   },
@@ -118,7 +91,7 @@ export const constantRoutes = [
         path: 'index',
         component: () => import('@/views/profile/index'),
         name: 'Profile',
-        meta: { title: 'Profile', icon: 'user', noCache: true }
+        meta: { title: '个人资料', icon: 'user', noCache: true }
       }
     ]
   }
@@ -130,255 +103,201 @@ export const constantRoutes = [
  */
 export const asyncRoutes = [
   {
-    path: '/permission',
+    path: '/system',
     component: Layout,
-    redirect: '/permission/page',
-    alwaysShow: true, // will always show the root menu
-    name: 'Permission',
+    redirect: '/system/permission/users',
+    name: 'SystemSettings',
+    alwaysShow: true,
     meta: {
-      title: 'Permission',
-      icon: 'lock',
-      roles: ['admin', 'editor'] // you can set roles in root nav
+      title: '系统设置',
+      icon: 'el-icon-setting',
+      roles: ['dhx-admin']
     },
     children: [
       {
-        path: 'page',
-        component: () => import('@/views/permission/page'),
-        name: 'PagePermission',
+        path: 'permission',
+        component: RouteView,
+        redirect: '/system/permission/users',
+        name: 'PermissionSettings',
+        alwaysShow: true,
         meta: {
-          title: 'Page Permission',
-          roles: ['admin'] // or you can only set roles in sub nav
-        }
-      },
-      {
-        path: 'directive',
-        component: () => import('@/views/permission/directive'),
-        name: 'DirectivePermission',
-        meta: {
-          title: 'Directive Permission'
-          // if do not set roles, means: this page does not require permission
-        }
-      },
-      {
-        path: 'role',
-        component: () => import('@/views/permission/role'),
-        name: 'RolePermission',
-        meta: {
-          title: 'Role Permission',
-          roles: ['admin']
-        }
+          title: '权限设置',
+          icon: 'el-icon-lock',
+          roles: ['dhx-admin']
+        },
+        children: [
+          {
+            path: 'users',
+            component: () => import('@/views/business/list'),
+            name: 'BusinessUsers',
+            meta: {
+              title: '用户管理',
+              icon: 'el-icon-user-solid',
+              roles: ['dhx-admin'],
+              moduleKey: 'users',
+              pageTitle: '后台用户管理',
+              pageDescription: '维护后台账号信息，后续在这里接入用户列表、详情和编辑能力。',
+              apiPaths: [
+                'GET /admin/users',
+                'POST /admin/users',
+                'GET /admin/users/{id}',
+                'PATCH /admin/users/{id}',
+                'DELETE /admin/users/{id}'
+              ]
+            }
+          },
+          {
+            path: 'roles',
+            component: () => import('@/views/system/roles'),
+            name: 'SystemRoles',
+            meta: {
+              title: '角色设置',
+              icon: 'el-icon-postcard',
+              roles: ['dhx-admin'],
+              pageTitle: '角色设置',
+              pageDescription: '当前仅做只读展示，展示系统内已启用的三种角色定义。'
+            }
+          },
+          {
+            path: 'brands',
+            component: () => import('@/views/system/brands'),
+            name: 'SystemBrands',
+            meta: {
+              title: '品牌管理',
+              icon: 'el-icon-collection',
+              roles: ['dhx-admin'],
+              pageTitle: '品牌管理',
+              pageDescription: '当前先做只读展示，品牌数据读取区域品牌列表接口。',
+              apiPaths: [
+                'GET /region/brands'
+              ]
+            }
+          }
+        ]
       }
     ]
   },
 
   {
-    path: '/icon',
+    path: '/organization',
     component: Layout,
-    children: [
-      {
-        path: 'index',
-        component: () => import('@/views/icons/index'),
-        name: 'Icons',
-        meta: { title: 'Icons', icon: 'icon', noCache: true }
-      }
-    ]
-  },
-
-  /** when your routing map is too long, you can split it into small modules **/
-  componentsRouter,
-  chartsRouter,
-  nestedRouter,
-  tableRouter,
-
-  {
-    path: '/example',
-    component: Layout,
-    redirect: '/example/list',
-    name: 'Example',
+    redirect: '/organization/regions',
+    name: 'Organization',
     meta: {
-      title: 'Example',
-      icon: 'el-icon-s-help'
+      title: '组织管理',
+      icon: 'el-icon-s-operation',
+      roles: ['dhx-admin']
     },
     children: [
       {
-        path: 'create',
-        component: () => import('@/views/example/create'),
-        name: 'CreateArticle',
-        meta: { title: 'Create Article', icon: 'edit' }
-      },
-      {
-        path: 'edit/:id(\\d+)',
-        component: () => import('@/views/example/edit'),
-        name: 'EditArticle',
-        meta: { title: 'Edit Article', noCache: true, activeMenu: '/example/list' },
+        path: 'users',
+        redirect: '/system/permission/users',
         hidden: true
       },
       {
-        path: 'list',
-        component: () => import('@/views/example/list'),
-        name: 'ArticleList',
-        meta: { title: 'Article List', icon: 'list' }
-      }
-    ]
-  },
-
-  {
-    path: '/tab',
-    component: Layout,
-    children: [
+        path: 'regions',
+        component: () => import('@/views/business/list'),
+        name: 'BusinessRegions',
+        meta: {
+          title: '区域管理',
+          icon: 'el-icon-location-information',
+          roles: ['dhx-admin'],
+          moduleKey: 'regions',
+          pageTitle: '后台区域管理',
+          pageDescription: '维护区域信息和负责人归属，作为门店与用户的上级组织。',
+          apiPaths: [
+            'GET /admin/regions',
+            'POST /admin/regions',
+            'GET /admin/regions/{id}',
+            'PATCH /admin/regions/{id}',
+            'DELETE /admin/regions/{id}'
+          ]
+        }
+      },
       {
-        path: 'index',
-        component: () => import('@/views/tab/index'),
-        name: 'Tab',
-        meta: { title: 'Tab', icon: 'tab' }
+        path: 'stores',
+        component: () => import('@/views/business/list'),
+        name: 'BusinessStores',
+        meta: {
+          title: '门店管理',
+          icon: 'el-icon-office-building',
+          roles: ['dhx-admin'],
+          moduleKey: 'stores',
+          pageTitle: '后台门店管理',
+          pageDescription: '维护门店基础信息、所属区域与启停状态。',
+          apiPaths: [
+            'GET /admin/stores',
+            'POST /admin/stores',
+            'GET /admin/stores/{id}',
+            'PATCH /admin/stores/{id}',
+            'DELETE /admin/stores/{id}'
+          ]
+        }
       }
     ]
   },
 
   {
-    path: '/error',
+    path: '/revenue',
     component: Layout,
-    redirect: 'noRedirect',
-    name: 'ErrorPages',
+    redirect: '/revenue/categories',
+    name: 'Revenue',
     meta: {
-      title: 'Error Pages',
-      icon: '404'
+      title: '营收管理',
+      icon: 'el-icon-data-analysis',
+      roles: ['dhx-admin']
     },
     children: [
       {
-        path: '401',
-        component: () => import('@/views/error-page/401'),
-        name: 'Page401',
-        meta: { title: '401', noCache: true }
-      },
-      {
-        path: '404',
-        component: () => import('@/views/error-page/404'),
-        name: 'Page404',
-        meta: { title: '404', noCache: true }
+        path: 'categories',
+        component: () => import('@/views/business/list'),
+        name: 'BusinessCategories',
+        meta: {
+          title: '营收分类',
+          icon: 'el-icon-collection-tag',
+          roles: ['dhx-admin'],
+          moduleKey: 'categories',
+          pageTitle: '后台营收分类管理',
+          pageDescription: '维护月度营收填报时可选的分类项和启停状态。',
+          apiPaths: [
+            'GET /admin/categories',
+            'POST /admin/categories',
+            'GET /admin/categories/{id}',
+            'PATCH /admin/categories/{id}',
+            'DELETE /admin/categories/{id}'
+          ]
+        }
       }
     ]
   },
 
   {
-    path: '/error-log',
+    path: '/approval',
     component: Layout,
-    children: [
-      {
-        path: 'log',
-        component: () => import('@/views/error-log/index'),
-        name: 'ErrorLog',
-        meta: { title: 'Error Log', icon: 'bug' }
-      }
-    ]
-  },
-
-  {
-    path: '/excel',
-    component: Layout,
-    redirect: '/excel/export-excel',
-    name: 'Excel',
+    redirect: '/approval/amend-requests',
+    name: 'Approval',
     meta: {
-      title: 'Excel',
-      icon: 'excel'
+      title: '审批中心',
+      icon: 'el-icon-s-check',
+      roles: ['dhx-admin']
     },
     children: [
       {
-        path: 'export-excel',
-        component: () => import('@/views/excel/export-excel'),
-        name: 'ExportExcel',
-        meta: { title: 'Export Excel' }
-      },
-      {
-        path: 'export-selected-excel',
-        component: () => import('@/views/excel/select-excel'),
-        name: 'SelectExcel',
-        meta: { title: 'Export Selected' }
-      },
-      {
-        path: 'export-merge-header',
-        component: () => import('@/views/excel/merge-header'),
-        name: 'MergeHeader',
-        meta: { title: 'Merge Header' }
-      },
-      {
-        path: 'upload-excel',
-        component: () => import('@/views/excel/upload-excel'),
-        name: 'UploadExcel',
-        meta: { title: 'Upload Excel' }
-      }
-    ]
-  },
-
-  {
-    path: '/zip',
-    component: Layout,
-    redirect: '/zip/download',
-    alwaysShow: true,
-    name: 'Zip',
-    meta: { title: 'Zip', icon: 'zip' },
-    children: [
-      {
-        path: 'download',
-        component: () => import('@/views/zip/index'),
-        name: 'ExportZip',
-        meta: { title: 'Export Zip' }
-      }
-    ]
-  },
-
-  {
-    path: '/pdf',
-    component: Layout,
-    redirect: '/pdf/index',
-    children: [
-      {
-        path: 'index',
-        component: () => import('@/views/pdf/index'),
-        name: 'PDF',
-        meta: { title: 'PDF', icon: 'pdf' }
-      }
-    ]
-  },
-  {
-    path: '/pdf/download',
-    component: () => import('@/views/pdf/download'),
-    hidden: true
-  },
-
-  {
-    path: '/theme',
-    component: Layout,
-    children: [
-      {
-        path: 'index',
-        component: () => import('@/views/theme/index'),
-        name: 'Theme',
-        meta: { title: 'Theme', icon: 'theme' }
-      }
-    ]
-  },
-
-  {
-    path: '/clipboard',
-    component: Layout,
-    children: [
-      {
-        path: 'index',
-        component: () => import('@/views/clipboard/index'),
-        name: 'ClipboardDemo',
-        meta: { title: 'Clipboard', icon: 'clipboard' }
-      }
-    ]
-  },
-
-  {
-    path: 'external-link',
-    component: Layout,
-    children: [
-      {
-        path: 'https://github.com/PanJiaChen/vue-element-admin',
-        meta: { title: 'External Link', icon: 'link' }
+        path: 'amend-requests',
+        component: () => import('@/views/business/amend-requests'),
+        name: 'BusinessAmendRequests',
+        meta: {
+          title: '补报审批',
+          icon: 'el-icon-document-checked',
+          roles: ['dhx-admin'],
+          pageTitle: '补报审批中心',
+          pageDescription: '查看并处理门店补报申请，审核通过后会回写正式营收记录。',
+          apiPaths: [
+            'GET /admin/amend-requests',
+            'POST /admin/amend-requests/{id}/approve',
+            'POST /admin/amend-requests/{id}/reject'
+          ]
+        }
       }
     ]
   },

@@ -2,12 +2,37 @@ import { login, logout, getInfo } from '@/api/user'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import router, { resetRouter } from '@/router'
 
+function normalizePermissionRole(role) {
+  if (role === 'admin' || role === 'dhx-admin') {
+    return 'dhx-admin'
+  }
+
+  return role
+}
+
+function buildIntroduction(user) {
+  if (user.store_name) {
+    return `${user.role} · ${user.store_name}`
+  }
+
+  if (user.region_name) {
+    return `${user.role} · ${user.region_name}`
+  }
+
+  return user.role
+}
+
+function resolveAvatar(user) {
+  return user.avatar || user.avatar_url || user.avatarUrl || ''
+}
+
 const state = {
   token: getToken(),
   name: '',
   avatar: '',
   introduction: '',
-  roles: []
+  roles: [],
+  profile: {}
 }
 
 const mutations = {
@@ -25,6 +50,9 @@ const mutations = {
   },
   SET_ROLES: (state, roles) => {
     state.roles = roles
+  },
+  SET_PROFILE: (state, profile) => {
+    state.profile = profile
   }
 }
 
@@ -54,7 +82,16 @@ const actions = {
           reject('Verification failed, please Login again.')
         }
 
-        const { roles, name, avatar, introduction } = data
+        const permissionRole = normalizePermissionRole(data.role)
+        const roles = permissionRole ? [permissionRole] : []
+        const name = data.name
+        const avatar = resolveAvatar(data)
+        const introduction = buildIntroduction(data)
+        const profile = {
+          ...data,
+          permissionRole,
+          avatar
+        }
 
         // roles must be a non-empty array
         if (!roles || roles.length <= 0) {
@@ -65,7 +102,8 @@ const actions = {
         commit('SET_NAME', name)
         commit('SET_AVATAR', avatar)
         commit('SET_INTRODUCTION', introduction)
-        resolve(data)
+        commit('SET_PROFILE', profile)
+        resolve({ ...profile, roles, introduction })
       }).catch(error => {
         reject(error)
       })
@@ -78,6 +116,10 @@ const actions = {
       logout(state.token).then(() => {
         commit('SET_TOKEN', '')
         commit('SET_ROLES', [])
+        commit('SET_NAME', '')
+        commit('SET_AVATAR', '')
+        commit('SET_INTRODUCTION', '')
+        commit('SET_PROFILE', {})
         removeToken()
         resetRouter()
 
@@ -97,6 +139,10 @@ const actions = {
     return new Promise(resolve => {
       commit('SET_TOKEN', '')
       commit('SET_ROLES', [])
+      commit('SET_NAME', '')
+      commit('SET_AVATAR', '')
+      commit('SET_INTRODUCTION', '')
+      commit('SET_PROFILE', {})
       removeToken()
       resolve()
     })
