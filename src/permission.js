@@ -26,18 +26,30 @@ router.beforeEach(async(to, from, next) => {
       next({ path: '/' })
       NProgress.done() // hack: https://github.com/PanJiaChen/vue-element-admin/pull/2939
     } else {
-      // determine whether the user has obtained his permission roles through getInfo
-      const hasRoles = store.getters.roles && store.getters.roles.length > 0
-      if (hasRoles) {
+      const roles = store.getters.roles || []
+      const permissionIds = store.getters.permissionIds || []
+      const hasAccessContext = roles.length > 0 || permissionIds.length > 0
+      const hasGeneratedRoutes = store.state.permission.addRoutes && store.state.permission.addRoutes.length > 0
+
+      if (hasAccessContext && hasGeneratedRoutes) {
         next()
       } else {
         try {
-          // get user info
-          // note: roles must be a object array! such as: ['admin'] or ,['developer','editor']
-          const { roles } = await store.dispatch('user/getInfo')
+          let accessContext
 
-          // generate accessible routes map based on roles
-          const accessRoutes = await store.dispatch('permission/generateRoutes', roles)
+          if (hasAccessContext) {
+            accessContext = { roles, permissionIds }
+          } else {
+            // get user info
+            const userInfo = await store.dispatch('user/getInfo')
+            accessContext = {
+              roles: userInfo.roles,
+              permissionIds: userInfo.permissionIds
+            }
+          }
+
+          // generate accessible routes map based on roles and permission ids
+          const accessRoutes = await store.dispatch('permission/generateRoutes', accessContext)
 
           // dynamically add accessible routes
           router.addRoutes(accessRoutes)

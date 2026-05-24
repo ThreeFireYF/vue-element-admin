@@ -1,31 +1,56 @@
 import { asyncRoutes, constantRoutes } from '@/router'
+import { hasAnyPermission, normalizePermissionIds } from '@/constants/permissions'
+
+function normalizeAccessContext(accessContext) {
+  if (Array.isArray(accessContext)) {
+    return {
+      roles: accessContext,
+      permissionIds: []
+    }
+  }
+
+  return {
+    roles: (accessContext && accessContext.roles) || [],
+    permissionIds: normalizePermissionIds(accessContext && accessContext.permissionIds)
+  }
+}
 
 /**
- * Use meta.role to determine if the current user has permission
- * @param roles
+ * Use meta.roles and meta.permissionIds to determine if the current user has permission
+ * @param accessContext
  * @param route
  */
-function hasPermission(roles, route) {
-  if (route.meta && route.meta.roles) {
-    return roles.some(role => route.meta.roles.includes(role))
-  } else {
-    return true
+function hasPermission(accessContext, route) {
+  const { roles, permissionIds } = normalizeAccessContext(accessContext)
+  const meta = route.meta || {}
+
+  if (meta.roles && meta.roles.length > 0) {
+    const hasRoleAccess = roles.some(role => meta.roles.includes(role))
+    if (!hasRoleAccess) {
+      return false
+    }
   }
+
+  if (meta.permissionIds && meta.permissionIds.length > 0) {
+    return hasAnyPermission(permissionIds, meta.permissionIds)
+  }
+
+  return true
 }
 
 /**
  * Filter asynchronous routing tables by recursion
  * @param routes asyncRoutes
- * @param roles
+ * @param accessContext
  */
-export function filterAsyncRoutes(routes, roles) {
+export function filterAsyncRoutes(routes, accessContext) {
   const res = []
 
   routes.forEach(route => {
     const tmp = { ...route }
-    if (hasPermission(roles, tmp)) {
+    if (hasPermission(accessContext, tmp)) {
       if (tmp.children) {
-        tmp.children = filterAsyncRoutes(tmp.children, roles)
+        tmp.children = filterAsyncRoutes(tmp.children, accessContext)
       }
       res.push(tmp)
     }
@@ -47,14 +72,17 @@ const mutations = {
 }
 
 const actions = {
-  generateRoutes({ commit }, roles) {
+  generateRoutes({ commit }, accessContext) {
     return new Promise(resolve => {
+      const normalizedAccessContext = normalizeAccessContext(accessContext)
       let accessedRoutes
-      if (roles.includes('dhx-admin')) {
+
+      if (normalizedAccessContext.roles.includes('dhx-admin') && normalizedAccessContext.permissionIds.length === 0) {
         accessedRoutes = asyncRoutes || []
       } else {
-        accessedRoutes = filterAsyncRoutes(asyncRoutes, roles)
+        accessedRoutes = filterAsyncRoutes(asyncRoutes, normalizedAccessContext)
       }
+
       commit('SET_ROUTES', accessedRoutes)
       resolve(accessedRoutes)
     })

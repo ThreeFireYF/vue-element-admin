@@ -5,11 +5,12 @@ const authBaseURL = process.env.VUE_APP_AUTH_BASE_API || process.env.VUE_APP_BAS
 export function login(data) {
   return request({
     baseURL: authBaseURL,
-    url: '/auth/login',
+    url: '/auth/admin-login',
     method: 'post',
     skipLegacyToken: true,
     data: {
-      code: data.username.trim()
+      username: data.username.trim(),
+      password: data.password
     }
   })
 }

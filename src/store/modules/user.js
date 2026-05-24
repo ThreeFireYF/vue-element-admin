@@ -1,6 +1,7 @@
 import { login, logout, getInfo } from '@/api/user'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import router, { resetRouter } from '@/router'
+import { normalizePermissionIds } from '@/constants/permissions'
 
 function normalizePermissionRole(role) {
   if (role === 'admin' || role === 'dhx-admin') {
@@ -11,19 +12,73 @@ function normalizePermissionRole(role) {
 }
 
 function buildIntroduction(user) {
-  if (user.store_name) {
-    return `${user.role} · ${user.store_name}`
+  const storeName = user.store_name || (user.store && user.store.name)
+  const regionName = user.region_name || (user.region && user.region.name)
+
+  if (storeName) {
+    return `${user.role} · ${storeName}`
   }
 
-  if (user.region_name) {
-    return `${user.role} · ${user.region_name}`
+  if (regionName) {
+    return `${user.role} · ${regionName}`
   }
 
-  return user.role
+  return user.role || ''
 }
 
 function resolveAvatar(user) {
   return user.avatar || user.avatar_url || user.avatarUrl || ''
+}
+
+function resolveAuthUser(payload) {
+  if (!payload) {
+    return null
+  }
+
+  return payload.user || payload
+}
+
+function buildUserSession(payload) {
+  const user = resolveAuthUser(payload)
+
+  if (!user) {
+    return null
+  }
+
+  const permissionRole = normalizePermissionRole(user.role)
+  const roles = permissionRole ? [permissionRole] : []
+  const permissionIds = normalizePermissionIds(user.permission_ids || payload.permission_ids)
+  const avatar = resolveAvatar(user)
+  const profile = {
+    ...user,
+    permission_ids: permissionIds,
+    permissionIds,
+    permissionRole,
+    avatar
+  }
+
+  return {
+    token: payload && payload.token ? payload.token : '',
+    roles,
+    permissionIds,
+    name: user.name || '',
+    avatar,
+    introduction: buildIntroduction(user),
+    profile
+  }
+}
+
+function commitUserSession(commit, session) {
+  if (session.token) {
+    commit('SET_TOKEN', session.token)
+  }
+
+  commit('SET_ROLES', session.roles)
+  commit('SET_PERMISSION_IDS', session.permissionIds)
+  commit('SET_NAME', session.name)
+  commit('SET_AVATAR', session.avatar)
+  commit('SET_INTRODUCTION', session.introduction)
+  commit('SET_PROFILE', session.profile)
 }
 
 const state = {
@@ -32,6 +87,7 @@ const state = {
   avatar: '',
   introduction: '',
   roles: [],
+  permissionIds: [],
   profile: {}
 }
 
@@ -51,6 +107,9 @@ const mutations = {
   SET_ROLES: (state, roles) => {
     state.roles = roles
   },
+  SET_PERMISSION_IDS: (state, permissionIds) => {
+    state.permissionIds = permissionIds
+  },
   SET_PROFILE: (state, profile) => {
     state.profile = profile
   }
@@ -63,9 +122,16 @@ const actions = {
     return new Promise((resolve, reject) => {
       login({ username: username.trim(), password: password }).then(response => {
         const { data } = response
+        const session = buildUserSession(data)
+
         commit('SET_TOKEN', data.token)
         setToken(data.token)
-        resolve()
+
+        if (session) {
+          commitUserSession(commit, session)
+        }
+
+        resolve(session)
       }).catch(error => {
         reject(error)
       })
@@ -77,33 +143,26 @@ const actions = {
     return new Promise((resolve, reject) => {
       getInfo(state.token).then(response => {
         const { data } = response
+        const session = buildUserSession(data)
 
-        if (!data) {
+        if (!session) {
           reject('Verification failed, please Login again.')
-        }
-
-        const permissionRole = normalizePermissionRole(data.role)
-        const roles = permissionRole ? [permissionRole] : []
-        const name = data.name
-        const avatar = resolveAvatar(data)
-        const introduction = buildIntroduction(data)
-        const profile = {
-          ...data,
-          permissionRole,
-          avatar
+          return
         }
 
         // roles must be a non-empty array
-        if (!roles || roles.length <= 0) {
+        if (!session.roles || session.roles.length <= 0) {
           reject('getInfo: roles must be a non-null array!')
+          return
         }
 
-        commit('SET_ROLES', roles)
-        commit('SET_NAME', name)
-        commit('SET_AVATAR', avatar)
-        commit('SET_INTRODUCTION', introduction)
-        commit('SET_PROFILE', profile)
-        resolve({ ...profile, roles, introduction })
+        commitUserSession(commit, session)
+        resolve({
+          ...session.profile,
+          roles: session.roles,
+          permissionIds: session.permissionIds,
+          introduction: session.introduction
+        })
       }).catch(error => {
         reject(error)
       })
@@ -116,6 +175,7 @@ const actions = {
       logout(state.token).then(() => {
         commit('SET_TOKEN', '')
         commit('SET_ROLES', [])
+        commit('SET_PERMISSION_IDS', [])
         commit('SET_NAME', '')
         commit('SET_AVATAR', '')
         commit('SET_INTRODUCTION', '')
@@ -139,6 +199,7 @@ const actions = {
     return new Promise(resolve => {
       commit('SET_TOKEN', '')
       commit('SET_ROLES', [])
+      commit('SET_PERMISSION_IDS', [])
       commit('SET_NAME', '')
       commit('SET_AVATAR', '')
       commit('SET_INTRODUCTION', '')

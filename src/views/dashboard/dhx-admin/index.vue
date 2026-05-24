@@ -8,7 +8,7 @@
             <el-tag size="small" type="success">{{ permissionRole }}</el-tag>
           </div>
           <div class="welcome-title">欢迎回来，{{ name || '未命名用户' }}</div>
-          <div class="welcome-desc">当前登录用户信息来自真实后端，菜单与页面权限由前端按 dhx-admin 控制。</div>
+          <div class="welcome-desc">当前登录用户信息来自真实后端，菜单与按钮显隐已按 permission_ids 控制。</div>
           <div class="meta-grid">
             <div class="meta-item">
               <div class="meta-label">后端角色</div>
@@ -35,9 +35,9 @@
           <div slot="header" class="card-header">
             <span>快捷入口</span>
           </div>
-          <div class="shortcut-list">
+          <div v-if="visibleShortcuts.length > 0" class="shortcut-list">
             <router-link
-              v-for="item in shortcuts"
+              v-for="item in visibleShortcuts"
               :key="item.path"
               :to="item.path"
               class="shortcut-item"
@@ -49,11 +49,12 @@
               </div>
             </router-link>
           </div>
+          <div v-else class="panel-empty">当前账号暂无可访问的快捷入口。</div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-card v-loading="statsLoading" class="overview-panel">
+    <el-card v-if="overviewCards.length > 0" v-loading="statsLoading" class="overview-panel">
       <div slot="header" class="card-header">
         <span>经营概览</span>
         <div class="overview-actions">
@@ -84,11 +85,16 @@
         </router-link>
       </div>
     </el-card>
+
+    <el-card v-else class="overview-panel overview-panel--empty">
+      <div class="panel-empty">当前账号暂无经营概览统计权限。</div>
+    </el-card>
   </div>
 </template>
 
 <script>
 import { mapGetters } from 'vuex'
+import { PERMISSION_ID_MAP, hasPermissionAccess } from '@/constants/permissions'
 import {
   getAdminUsers,
   getAdminStores,
@@ -117,34 +123,39 @@ export default {
       dashboardStats: createDefaultStats(),
       shortcuts: [
         {
-          path: '/organization/users',
+          path: '/system/permission/users',
           title: '用户管理',
           desc: '维护后台账号与角色归属',
-          icon: 'el-icon-user-solid'
+          icon: 'el-icon-user-solid',
+          permissionId: PERMISSION_ID_MAP.USER_READ
         },
         {
           path: '/organization/regions',
           title: '区域管理',
           desc: '配置区域与负责人关系',
-          icon: 'el-icon-location-information'
+          icon: 'el-icon-location-information',
+          permissionId: PERMISSION_ID_MAP.REGION_READ
         },
         {
           path: '/organization/stores',
           title: '门店管理',
           desc: '维护门店与区域映射',
-          icon: 'el-icon-office-building'
+          icon: 'el-icon-office-building',
+          permissionId: PERMISSION_ID_MAP.STORE_READ
         },
         {
           path: '/revenue/categories',
           title: '营收分类',
           desc: '配置填报分类项',
-          icon: 'el-icon-collection-tag'
+          icon: 'el-icon-collection-tag',
+          permissionId: PERMISSION_ID_MAP.CATEGORY_READ
         },
         {
           path: '/approval/amend-requests',
           title: '补报审批',
           desc: '处理门店补报申请',
-          icon: 'el-icon-document-checked'
+          icon: 'el-icon-document-checked',
+          permissionId: PERMISSION_ID_MAP.AMEND_READ
         }
       ]
     }
@@ -153,7 +164,9 @@ export default {
     ...mapGetters([
       'name',
       'introduction',
-      'profile'
+      'profile',
+      'permissionIds',
+      'roles'
     ]),
     permissionRole() {
       return this.profile.permissionRole || '-'
@@ -167,9 +180,14 @@ export default {
     storeName() {
       return this.profile.store_name || '-'
     },
+    visibleShortcuts() {
+      return this.shortcuts.filter(item => this.hasPermission(item.permissionId))
+    },
     overviewCards() {
-      return [
-        {
+      const cards = []
+
+      if (this.hasPermission(PERMISSION_ID_MAP.STORE_READ)) {
+        cards.push({
           key: 'stores',
           path: '/organization/stores',
           label: '门店管理',
@@ -177,8 +195,11 @@ export default {
           meta: `${this.formatCount(this.dashboardStats.disabledStoreTotal, '家已停用')}`,
           icon: 'el-icon-office-building',
           themeClass: 'overview-item--stores'
-        },
-        {
+        })
+      }
+
+      if (this.hasPermission(PERMISSION_ID_MAP.CATEGORY_READ)) {
+        cards.push({
           key: 'categories',
           path: '/revenue/categories',
           label: '营收分类配置',
@@ -186,17 +207,23 @@ export default {
           meta: '用于门店月度营收填报',
           icon: 'el-icon-collection-tag',
           themeClass: 'overview-item--categories'
-        },
-        {
+        })
+      }
+
+      if (this.hasPermission(PERMISSION_ID_MAP.USER_READ)) {
+        cards.push({
           key: 'accounts',
-          path: '/organization/users',
+          path: '/system/permission/users',
           label: '账号与权限',
           headline: `共${this.formatCount(this.dashboardStats.userTotal, '个账号')}`,
           meta: `${this.formatCount(this.dashboardStats.roleTypeCount, '种角色')}`,
           icon: 'el-icon-user-solid',
           themeClass: 'overview-item--accounts'
-        },
-        {
+        })
+      }
+
+      if (this.hasPermission(PERMISSION_ID_MAP.AMEND_READ)) {
+        cards.push({
           key: 'amends',
           path: '/approval/amend-requests',
           label: '补报审核',
@@ -204,14 +231,21 @@ export default {
           meta: '进入审批中心处理待审记录',
           icon: 'el-icon-document-checked',
           themeClass: 'overview-item--amends'
-        }
-      ]
+        })
+      }
+
+      return cards
     }
   },
   created() {
-    this.fetchDashboardStats()
+    if (this.overviewCards.length > 0) {
+      this.fetchDashboardStats()
+    }
   },
   methods: {
+    hasPermission(permissionId) {
+      return hasPermissionAccess(this.permissionIds, [permissionId], this.roles)
+    },
     async fetchDashboardStats() {
       if (this.statsLoading) {
         return
@@ -219,28 +253,34 @@ export default {
 
       this.statsLoading = true
       try {
-        const [
-          storeResponse,
-          disabledStoreResponse,
-          categoryResponse,
-          userMetrics,
-          amendResponse
-        ] = await Promise.all([
-          getAdminStores({ page: 1, page_size: 1 }),
-          getAdminStores({ page: 1, page_size: 1, status: 'disabled' }),
-          getAdminCategories({ page: 1, page_size: 1 }),
-          this.fetchUserMetrics(),
-          getAdminAmendRequests({ status: 'pending' })
-        ])
+        const nextStats = createDefaultStats()
 
-        this.dashboardStats = {
-          storeTotal: this.resolveTotal(storeResponse),
-          disabledStoreTotal: this.resolveTotal(disabledStoreResponse),
-          categoryTotal: this.resolveTotal(categoryResponse),
-          userTotal: userMetrics.total,
-          roleTypeCount: userMetrics.roleTypeCount,
-          pendingAmendTotal: this.resolveListCount(amendResponse)
+        if (this.hasPermission(PERMISSION_ID_MAP.STORE_READ)) {
+          const [storeResponse, disabledStoreResponse] = await Promise.all([
+            getAdminStores({ page: 1, page_size: 1 }),
+            getAdminStores({ page: 1, page_size: 1, status: 'disabled' })
+          ])
+          nextStats.storeTotal = this.resolveTotal(storeResponse)
+          nextStats.disabledStoreTotal = this.resolveTotal(disabledStoreResponse)
         }
+
+        if (this.hasPermission(PERMISSION_ID_MAP.CATEGORY_READ)) {
+          const categoryResponse = await getAdminCategories({ page: 1, page_size: 1 })
+          nextStats.categoryTotal = this.resolveTotal(categoryResponse)
+        }
+
+        if (this.hasPermission(PERMISSION_ID_MAP.USER_READ)) {
+          const userMetrics = await this.fetchUserMetrics()
+          nextStats.userTotal = userMetrics.total
+          nextStats.roleTypeCount = userMetrics.roleTypeCount
+        }
+
+        if (this.hasPermission(PERMISSION_ID_MAP.AMEND_READ)) {
+          const amendResponse = await getAdminAmendRequests({ status: 'pending' })
+          nextStats.pendingAmendTotal = this.resolveListCount(amendResponse)
+        }
+
+        this.dashboardStats = nextStats
       } finally {
         this.statsLoading = false
       }
@@ -356,8 +396,24 @@ export default {
   gap: 12px;
 }
 
+.panel-empty {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  line-height: 1.7;
+  text-align: center;
+}
+
 .overview-panel {
   margin-top: 20px;
+}
+
+.overview-panel--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .overview-actions {

@@ -86,7 +86,7 @@
               详情
             </el-button>
             <el-button
-              v-if="scope.row.status === 'pending'"
+              v-if="scope.row.status === 'pending' && canApproveAmendRequest"
               type="success"
               size="mini"
               @click="openReviewDialog('approve', scope.row)"
@@ -94,7 +94,7 @@
               通过
             </el-button>
             <el-button
-              v-if="scope.row.status === 'pending'"
+              v-if="scope.row.status === 'pending' && canApproveAmendRequest"
               type="danger"
               size="mini"
               @click="openReviewDialog('reject', scope.row)"
@@ -215,6 +215,7 @@
 <script>
 import { mapGetters } from 'vuex'
 import { parseTime } from '@/utils'
+import { PERMISSION_ID_MAP, hasPermissionAccess } from '@/constants/permissions'
 import {
   getAdminAmendRequests,
   approveAdminAmendRequest,
@@ -305,7 +306,9 @@ export default {
   },
   computed: {
     ...mapGetters([
-      'profile'
+      'profile',
+      'permissionIds',
+      'roles'
     ]),
     pageTitle() {
       return this.$route.meta.pageTitle || this.$route.meta.title
@@ -315,6 +318,9 @@ export default {
     },
     permissionRole() {
       return this.profile.permissionRole || '-'
+    },
+    canApproveAmendRequest() {
+      return hasPermissionAccess(this.permissionIds, [PERMISSION_ID_MAP.AMEND_APPROVE], this.roles)
     },
     reviewDialogTitle() {
       return this.reviewAction === 'approve' ? '通过补报申请' : '驳回补报申请'
@@ -364,6 +370,11 @@ export default {
       })
     },
     openReviewDialog(action, row) {
+      if (!this.canApproveAmendRequest) {
+        this.$message.warning('当前账号暂无补报审批权限')
+        return
+      }
+
       this.reviewAction = action
       this.currentRow = row
       this.reviewDialogVisible = true
@@ -372,7 +383,7 @@ export default {
       }
     },
     async submitReview() {
-      if (!this.currentRow) {
+      if (!this.currentRow || !this.canApproveAmendRequest) {
         return
       }
 

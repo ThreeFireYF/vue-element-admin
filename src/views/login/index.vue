@@ -69,7 +69,7 @@
 <script>
 import SocialSign from './components/SocialSignin'
 
-const DISABLED_DEMO_ACCOUNTS = ['admin', 'editor']
+const DISABLED_DEMO_ACCOUNTS = ['demo_admin', 'demo_editor']
 
 export default {
   name: 'Login',
@@ -95,7 +95,7 @@ export default {
     }
     return {
       loginForm: {
-        username: 'mock_admin_001',
+        username: 'admin',
         password: ''
       },
       loginRules: {
