@@ -51,6 +51,14 @@ export function getAdminAmendRequests(params) {
   return createAdminListRequest('/admin/amend-requests', params)
 }
 
+export function getAdminPermissions() {
+  return createAdminDetailRequest('/admin/permissions')
+}
+
+export function getAdminRoles() {
+  return createAdminDetailRequest('/admin/roles')
+}
+
 export function getAdminUserDetail(id) {
   return createAdminDetailRequest(`/admin/users/${id}`)
 }

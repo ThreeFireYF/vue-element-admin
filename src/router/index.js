@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import Router from 'vue-router'
+import { ROUTE_PERMISSION_IDS } from '@/constants/permissions'
 
 Vue.use(Router)
 
@@ -22,6 +23,7 @@ const RouteView = {
  * name:'router-name'             the name is used by <keep-alive> (must set!!!)
  * meta : {
     roles: ['dhx-admin']         control the page roles (you can set multiple roles)
+   permissionIds: [1, 2]        control the page permissions by backend permission_ids
     title: 'title'               the name show in sidebar and breadcrumb (recommend set)
     icon: 'svg-name'/'el-icon-x' the icon show in the sidebar
     noCache: true                if set true, the page will no be cached(default is false)
@@ -111,7 +113,7 @@ export const asyncRoutes = [
     meta: {
       title: '系统设置',
       icon: 'el-icon-setting',
-      roles: ['dhx-admin']
+      permissionIds: ROUTE_PERMISSION_IDS.systemSettings
     },
     children: [
       {
@@ -123,7 +125,7 @@ export const asyncRoutes = [
         meta: {
           title: '权限设置',
           icon: 'el-icon-lock',
-          roles: ['dhx-admin']
+          permissionIds: ROUTE_PERMISSION_IDS.permissionSettings
         },
         children: [
           {
@@ -133,7 +135,7 @@ export const asyncRoutes = [
             meta: {
               title: '用户管理',
               icon: 'el-icon-user-solid',
-              roles: ['dhx-admin'],
+              permissionIds: ROUTE_PERMISSION_IDS.users,
               moduleKey: 'users',
               pageTitle: '后台用户管理',
               pageDescription: '维护后台账号信息，后续在这里接入用户列表、详情和编辑能力。',
@@ -153,7 +155,7 @@ export const asyncRoutes = [
             meta: {
               title: '角色设置',
               icon: 'el-icon-postcard',
-              roles: ['dhx-admin'],
+              permissionIds: ROUTE_PERMISSION_IDS.roles,
               pageTitle: '角色设置',
               pageDescription: '当前仅做只读展示，展示系统内已启用的三种角色定义。'
             }
@@ -165,7 +167,7 @@ export const asyncRoutes = [
             meta: {
               title: '品牌管理',
               icon: 'el-icon-collection',
-              roles: ['dhx-admin'],
+              permissionIds: ROUTE_PERMISSION_IDS.brands,
               pageTitle: '品牌管理',
               pageDescription: '当前先做只读展示，品牌数据读取区域品牌列表接口。',
               apiPaths: [
@@ -186,7 +188,7 @@ export const asyncRoutes = [
     meta: {
       title: '组织管理',
       icon: 'el-icon-s-operation',
-      roles: ['dhx-admin']
+      permissionIds: ROUTE_PERMISSION_IDS.organization
     },
     children: [
       {
@@ -201,7 +203,7 @@ export const asyncRoutes = [
         meta: {
           title: '区域管理',
           icon: 'el-icon-location-information',
-          roles: ['dhx-admin'],
+          permissionIds: ROUTE_PERMISSION_IDS.regions,
           moduleKey: 'regions',
           pageTitle: '后台区域管理',
           pageDescription: '维护区域信息和负责人归属，作为门店与用户的上级组织。',
@@ -221,7 +223,7 @@ export const asyncRoutes = [
         meta: {
           title: '门店管理',
           icon: 'el-icon-office-building',
-          roles: ['dhx-admin'],
+          permissionIds: ROUTE_PERMISSION_IDS.stores,
           moduleKey: 'stores',
           pageTitle: '后台门店管理',
           pageDescription: '维护门店基础信息、所属区域与启停状态。',
@@ -245,7 +247,7 @@ export const asyncRoutes = [
     meta: {
       title: '营收管理',
       icon: 'el-icon-data-analysis',
-      roles: ['dhx-admin']
+      permissionIds: ROUTE_PERMISSION_IDS.revenue
     },
     children: [
       {
@@ -255,7 +257,7 @@ export const asyncRoutes = [
         meta: {
           title: '营收分类',
           icon: 'el-icon-collection-tag',
-          roles: ['dhx-admin'],
+          permissionIds: ROUTE_PERMISSION_IDS.categories,
           moduleKey: 'categories',
           pageTitle: '后台营收分类管理',
           pageDescription: '维护月度营收填报时可选的分类项和启停状态。',
@@ -279,7 +281,7 @@ export const asyncRoutes = [
     meta: {
       title: '审批中心',
       icon: 'el-icon-s-check',
-      roles: ['dhx-admin']
+      permissionIds: ROUTE_PERMISSION_IDS.approval
     },
     children: [
       {
@@ -289,7 +291,7 @@ export const asyncRoutes = [
         meta: {
           title: '补报审批',
           icon: 'el-icon-document-checked',
-          roles: ['dhx-admin'],
+          permissionIds: ROUTE_PERMISSION_IDS.amendRequests,
           pageTitle: '补报审批中心',
           pageDescription: '查看并处理门店补报申请，审核通过后会回写正式营收记录。',
           apiPaths: [

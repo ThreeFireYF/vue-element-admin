@@ -68,7 +68,7 @@
         <el-button icon="el-icon-refresh" class="filter-item" @click="handleReset">
           重置
         </el-button>
-        <el-button type="success" icon="el-icon-plus" class="filter-item" @click="handleCreate">
+        <el-button v-if="canCreate" type="success" icon="el-icon-plus" class="filter-item" @click="handleCreate">
           新增{{ currentModuleLabel }}
         </el-button>
       </div>
@@ -109,15 +109,15 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="240" align="center" fixed="right">
+        <el-table-column label="操作" :width="operationColumnWidth" align="center" fixed="right">
           <template slot-scope="scope">
             <el-button size="mini" @click="handleView(scope.row)">
               详情
             </el-button>
-            <el-button type="primary" size="mini" @click="handleEdit(scope.row)">
+            <el-button v-if="canUpdate" type="primary" size="mini" @click="handleEdit(scope.row)">
               编辑
             </el-button>
-            <el-button type="danger" size="mini" @click="handleDelete(scope.row)">
+            <el-button v-if="canDelete" type="danger" size="mini" @click="handleDelete(scope.row)">
               删除
             </el-button>
           </template>
@@ -315,6 +315,7 @@
 import { mapGetters } from 'vuex'
 import Pagination from '@/components/Pagination'
 import { parseTime } from '@/utils'
+import { MODULE_PERMISSION_IDS, hasPermissionAccess } from '@/constants/permissions'
 import {
   getAdminUsers,
   getAdminRegions,
@@ -404,6 +405,7 @@ const MODULE_CONFIGS = {
       { prop: 'name', label: '姓名', minWidth: 120 },
       { prop: 'openid', label: 'OpenID', minWidth: 180 },
       { prop: 'role', label: '后端角色', minWidth: 120, formatter: row => ROLE_LABELS[row.role] || row.role || '-' },
+      { prop: 'roleId', label: '角色ID', minWidth: 100, formatter: row => row.roleId || '-' },
       { prop: 'region', label: '所属区域', minWidth: 120, formatter: row => (row.region && row.region.name) || '-' },
       { prop: 'store', label: '所属门店', minWidth: 120, formatter: row => (row.store && row.store.name) || '-' },
       { prop: 'status', label: '状态', width: 100, type: 'status' },
@@ -414,6 +416,7 @@ const MODULE_CONFIGS = {
       { prop: 'name', label: '姓名' },
       { prop: 'openid', label: 'OpenID' },
       { prop: 'role', label: '后端角色', formatter: row => ROLE_LABELS[row.role] || row.role || '-' },
+      { prop: 'roleId', label: '角色ID' },
       { prop: 'region.name', label: '所属区域' },
       { prop: 'store.name', label: '所属门店' },
       { prop: 'status', label: '状态', type: 'status' },
@@ -662,7 +665,9 @@ export default {
   },
   computed: {
     ...mapGetters([
-      'profile'
+      'profile',
+      'permissionIds',
+      'roles'
     ]),
     moduleKey() {
       return this.$route.meta.moduleKey
@@ -671,7 +676,7 @@ export default {
       return MODULE_CONFIGS[this.moduleKey]
     },
     columns() {
-      return this.activeConfig.columns
+      return this.activeConfig ? this.activeConfig.columns : []
     },
     pageTitle() {
       return this.$route.meta.pageTitle || this.$route.meta.title
@@ -683,7 +688,10 @@ export default {
       return this.profile.permissionRole || '-'
     },
     currentModuleLabel() {
-      return this.activeConfig.entityName
+      return this.activeConfig ? this.activeConfig.entityName : ''
+    },
+    modulePermissionConfig() {
+      return MODULE_PERMISSION_IDS[this.moduleKey] || {}
     },
     dialogTitle() {
       return `${this.isEditMode ? '编辑' : '新增'}${this.currentModuleLabel}`
@@ -695,10 +703,10 @@ export default {
       return this.dialogType === 'edit'
     },
     hasRoleFilter() {
-      return this.activeConfig.filters.role
+      return this.activeConfig ? this.activeConfig.filters.role : false
     },
     hasRegionFilter() {
-      return this.activeConfig.filters.region
+      return this.activeConfig ? this.activeConfig.filters.region : false
     },
     showUserRegionField() {
       return this.moduleKey === 'users' && this.formModel.role === 'region_manager'
@@ -707,7 +715,29 @@ export default {
       return this.moduleKey === 'users' && this.formModel.role === 'store_reporter'
     },
     detailFields() {
-      return this.activeConfig.detailFields || []
+      return this.activeConfig ? (this.activeConfig.detailFields || []) : []
+    },
+    canCreate() {
+      return this.hasModulePermission('create')
+    },
+    canUpdate() {
+      return this.hasModulePermission('update')
+    },
+    canDelete() {
+      return this.hasModulePermission('delete')
+    },
+    operationColumnWidth() {
+      const visibleActionCount = 1 + Number(this.canUpdate) + Number(this.canDelete)
+
+      if (visibleActionCount <= 1) {
+        return 100
+      }
+
+      if (visibleActionCount === 2) {
+        return 170
+      }
+
+      return 240
     },
     formRules() {
       if (this.moduleKey === 'users') {
@@ -744,11 +774,24 @@ export default {
     moduleKey: {
       immediate: true,
       handler() {
+        if (!this.activeConfig) {
+          return
+        }
+
         this.initializePage()
       }
     }
   },
   methods: {
+    hasModulePermission(action) {
+      const permissionId = this.modulePermissionConfig[action]
+
+      if (!permissionId) {
+        return false
+      }
+
+      return hasPermissionAccess(this.permissionIds, [permissionId], this.roles)
+    },
     createDefaultQuery() {
       const query = {
         page: 1,
@@ -768,6 +811,10 @@ export default {
       return query
     },
     async initializePage() {
+      if (!this.activeConfig) {
+        return
+      }
+
       this.listQuery = this.createDefaultQuery()
       this.list = []
       this.total = 0
@@ -824,6 +871,10 @@ export default {
       return params
     },
     async getList() {
+      if (!this.activeConfig || !this.activeConfig.fetcher) {
+        return
+      }
+
       this.listLoading = true
       try {
         const response = await this.activeConfig.fetcher(this.buildQueryParams())

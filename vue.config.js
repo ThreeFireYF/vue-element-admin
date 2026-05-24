@@ -29,6 +29,18 @@ const usePollingWatchers = shouldUsePollingWatchers()
 // You can change the port by the following method:
 // port = 9527 npm run dev OR npm run dev --port = 9527
 const port = process.env.port || process.env.npm_config_port || 9527 // dev port
+const authProxyTarget = process.env.VUE_APP_AUTH_PROXY_TARGET || 'http://170.106.137.117:3000'
+
+function restreamProxyRequestBody(proxyReq, req) {
+  if (!req.body || !Object.keys(req.body).length) {
+    return
+  }
+
+  const bodyData = JSON.stringify(req.body)
+  proxyReq.setHeader('Content-Type', 'application/json; charset=UTF-8')
+  proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData))
+  proxyReq.write(bodyData)
+}
 
 // All configuration item explanations can be find in https://cli.vuejs.org/config/
 module.exports = {
@@ -47,6 +59,16 @@ module.exports = {
   devServer: {
     port: port,
     open: true,
+    proxy: {
+      '/auth-api': {
+        target: authProxyTarget,
+        changeOrigin: true,
+        pathRewrite: {
+          '^/auth-api': ''
+        },
+        onProxyReq: restreamProxyRequestBody
+      }
+    },
     overlay: {
       warnings: false,
       errors: true
