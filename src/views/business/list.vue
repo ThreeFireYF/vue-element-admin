@@ -117,6 +117,9 @@
             <el-button v-if="canUpdate" type="primary" size="mini" @click="handleEdit(scope.row)">
               编辑
             </el-button>
+            <el-button v-if="showSetPasswordAction" type="warning" size="mini" @click="handleSetPassword(scope.row)">
+              设置密码
+            </el-button>
             <el-button v-if="canDelete" type="danger" size="mini" @click="handleDelete(scope.row)">
               删除
             </el-button>
@@ -151,7 +154,10 @@
         <el-form ref="dataForm" :model="formModel" :rules="formRules" label-width="100px">
           <template v-if="moduleKey === 'users'">
             <el-form-item label="OpenID" prop="openid">
-              <el-input v-model.trim="formModel.openid" placeholder="请输入 OpenID" />
+              <el-input v-model.trim="formModel.openid" placeholder="请输入 OpenID（选填）" />
+            </el-form-item>
+            <el-form-item label="手机号" prop="phone">
+              <el-input v-model.trim="formModel.phone" placeholder="请输入手机号" />
             </el-form-item>
             <el-form-item label="姓名" prop="name">
               <el-input v-model.trim="formModel.name" placeholder="请输入姓名" />
@@ -403,6 +409,7 @@ const MODULE_CONFIGS = {
     columns: [
       { prop: 'id', label: 'ID', width: 90 },
       { prop: 'name', label: '姓名', minWidth: 120 },
+      { prop: 'phone', label: '手机号', minWidth: 140 },
       { prop: 'openid', label: 'OpenID', minWidth: 180 },
       { prop: 'role', label: '后端角色', minWidth: 120, formatter: row => ROLE_LABELS[row.role] || row.role || '-' },
       { prop: 'roleId', label: '角色ID', minWidth: 100, formatter: row => row.roleId || '-' },
@@ -414,6 +421,7 @@ const MODULE_CONFIGS = {
     detailFields: [
       { prop: 'id', label: 'ID' },
       { prop: 'name', label: '姓名' },
+      { prop: 'phone', label: '手机号' },
       { prop: 'openid', label: 'OpenID' },
       { prop: 'role', label: '后端角色', formatter: row => ROLE_LABELS[row.role] || row.role || '-' },
       { prop: 'roleId', label: '角色ID' },
@@ -427,17 +435,19 @@ const MODULE_CONFIGS = {
       return {
         id: undefined,
         openid: '',
+        phone: '',
         name: '',
-        role: 'admin',
+        role: undefined,
         region_id: undefined,
         store_id: undefined,
-        status: 'active'
+        status: undefined
       }
     },
     mapRowToForm(row) {
       return {
         id: row.id,
         openid: row.openid || '',
+        phone: row.phone || '',
         name: row.name || '',
         role: row.role || 'admin',
         region_id: normalizeId(row.regionId),
@@ -447,10 +457,14 @@ const MODULE_CONFIGS = {
     },
     buildPayload(formModel) {
       const payload = {
-        openid: trimString(formModel.openid),
         name: trimString(formModel.name),
         role: formModel.role,
         status: formModel.status
+      }
+
+      const openid = trimString(formModel.openid)
+      if (openid) {
+        payload.openid = openid
       }
 
       if (formModel.role === 'region_manager' && formModel.region_id) {
@@ -726,8 +740,11 @@ export default {
     canDelete() {
       return this.hasModulePermission('delete')
     },
+    showSetPasswordAction() {
+      return this.moduleKey === 'users' && this.canUpdate
+    },
     operationColumnWidth() {
-      const visibleActionCount = 1 + Number(this.canUpdate) + Number(this.canDelete)
+      const visibleActionCount = 1 + Number(this.canUpdate) + Number(this.showSetPasswordAction) + Number(this.canDelete)
 
       if (visibleActionCount <= 1) {
         return 100
@@ -737,12 +754,16 @@ export default {
         return 170
       }
 
+      if (visibleActionCount === 4) {
+        return 320
+      }
+
       return 240
     },
     formRules() {
       if (this.moduleKey === 'users') {
         return {
-          openid: [{ required: true, message: '请输入 OpenID', trigger: 'blur' }],
+          phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
           name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
           role: [{ required: true, message: '请选择角色', trigger: 'change' }],
           status: [{ required: true, message: '请选择状态', trigger: 'change' }]
@@ -1010,6 +1031,10 @@ export default {
       this.$message.success('删除成功')
       await this.loadFormOptions(true)
       await this.getList()
+    },
+    handleSetPassword(row) {
+      const label = row.name || row.openid || row.id
+      this.$message.warning(`用户“${label}”的设置密码接口待确认，当前仅预留按钮入口`)
     },
     formatCell(row, column) {
       if (column.formatter) {
